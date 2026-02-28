@@ -54,7 +54,7 @@ class DataPreparation():
         number_label_values = self.df[self.label].nunique()
         if number_label_values == 2:
             print(f"The '{self.label}' column has only two unique values.")
-            self.df.loc[:, self.label] = self.df[self.label].replace([self.unfav, self.fav], [0, 1])
+            self.df[self.label] = (self.df[self.label].map({self.unfav: 0, self.fav: 1}).astype(int))
         else:
             print(f"The '{self.label}' column does not have exactly two unique values, as it should.")
 
@@ -63,8 +63,18 @@ class DataPreparation():
         sex_mapping = {self.priv[1]: 1, self.unpriv[1]: 0}
 
         # Apply the mappings to the respective columns
-        self.df.loc[:, self.sensitive[0]] = self.df[self.sensitive[0]].replace(race_mapping)
-        self.df.loc[:, self.sensitive[1]] = self.df[self.sensitive[1]].replace(sex_mapping)
+        self.df[self.sensitive[0]] = (
+            self.df[self.sensitive[0]]
+            .replace(race_mapping)
+        )
+
+        self.df[self.sensitive[1]] = (
+            self.df[self.sensitive[1]]
+            .replace(sex_mapping)
+        )
+
+        self.df[self.sensitive[0]] = self.df[self.sensitive[0]].astype(int)
+        self.df[self.sensitive[1]] = self.df[self.sensitive[1]].astype(int)
 
     def find_categorical_attributes(self):
         """
@@ -106,7 +116,8 @@ class DataPreparation():
 
         for column in self.columns_categorical:
             le = LabelEncoder()
-            self.df.loc[:, column] = le.fit_transform(self.df[column].values)
+            encoded = le.fit_transform(self.df[column].astype(str).values)
+            self.df[column] = pd.Series(encoded, index=self.df.index, dtype="int64")
             mapping = dict(zip(le.classes_, range(len(le.classes_))))
             encoder_dict[column] = mapping
         print(encoder_dict, 'encoder dict')
@@ -139,18 +150,30 @@ class DataPreparation():
         return self.X_train, self.y_train, self.X_test, self.y_test
 
     def standardization_numerical(self):
-        train_dataset_numerical = self.X_train[self.columns_numerical]
-        test_dataset_numerical = self.X_test[self.columns_numerical]
 
-        scaler = StandardScaler().fit(train_dataset_numerical)
-        train_dataset_scaled_numerical = scaler.transform(train_dataset_numerical)
-        test_dataset_scaled_numerical = scaler.transform(test_dataset_numerical)
+        numerical_cols = [
+            col for col in self.X_train.columns
+            if col in self.columns_numerical
+        ]
 
-        self.X_train.loc[:, self.columns_numerical] = train_dataset_scaled_numerical
-        self.X_test.loc[:, self.columns_numerical] = test_dataset_scaled_numerical
+        train_dataset_numerical = self.X_train[numerical_cols]
+        test_dataset_numerical = self.X_test[numerical_cols]
+        scaler = StandardScaler()
+        scaler.fit(train_dataset_numerical)
+        self.X_train[numerical_cols] = scaler.transform(train_dataset_numerical)
+        self.X_test[numerical_cols] = scaler.transform(test_dataset_numerical)
+        self.X_train = pd.concat(
+            [self.X_train.reset_index(drop=True),
+             self.y_train.reset_index(drop=True)],
+            axis=1
+        )
 
-        self.X_train = pd.concat([self.X_train, self.y_train], axis=1)
-        self.X_test = pd.concat([self.X_test, self.y_test], axis=1)
+        self.X_test = pd.concat(
+            [self.X_test.reset_index(drop=True),
+             self.y_test.reset_index(drop=True)],
+            axis=1
+        )
+
         return self.X_train, self.X_test
 
     def prepare(self):

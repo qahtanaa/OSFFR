@@ -74,7 +74,7 @@ def preprocess_dataset(dataset_path, dataset_type, model):
     elif dataset_type == 'Adult':
         df = pd.read_csv(dataset_path, delimiter=';')
         df['income'] = df['income'].str.strip().replace({'>50K.': '>50K', '<=50K.': '<=50K'})
-        df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+        df = df.map(lambda x: x.strip() if isinstance(x, str) else x)
         df.replace('?', np.nan, inplace=True)
         df = df.drop(columns=['fnlwgt', 'education-num'])
         df = df[(df['race'] == 'White') | (df['race'] == 'Black')].reset_index(drop=True)
@@ -104,10 +104,10 @@ def preprocess_dataset(dataset_path, dataset_type, model):
         favorable_label = 'Admit'
         unfavorable_label = 'Discharge'
         groups = [
-                  {'name': 'White Male', 'attributes': {'race': 1, 'gender': 'Male'}},
-                  {'name': 'Others Male', 'attributes': {'race': 0, 'gender': 'Male'}},
-                  {'name': 'White Female', 'attributes': {'race': 1, 'gender': 'Female'}},
-                  {'name': 'Others Female', 'attributes': {'race': 0, 'gender': 'Female'}}
+                  {'name': 'White Male', 'attributes': {'race': 1, 'gender': 1}},
+                  {'name': 'Others Male', 'attributes': {'race': 0, 'gender': 1}},
+                  {'name': 'White Female', 'attributes': {'race': 1, 'gender': 0}},
+                  {'name': 'Others Female', 'attributes': {'race': 0, 'gender': 0}}
               ]
         model = model
 
@@ -317,13 +317,13 @@ def evaluate_model_performance(X_train, X_test, protected_attributes, label_name
                                         protected_attribute_names=protected_attributes,
                                         favorable_label=favorable_label, unfavorable_label=unfavorable_label)
     if model == 'Logistic Regression':
-        classifier = LogisticRegression(max_iter = 500)
+        classifier = LogisticRegression(max_iter = 2000)
     elif model == 'Random Forest':
         classifier = RandomForestClassifier(n_estimators=100, random_state=42)
     elif model == 'Gradient Boosting':
         classifier = GradientBoostingClassifier(n_estimators=100, learning_rate=0.1, random_state=42)
     elif model == 'Neural Network':
-        classifier = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(5, 2), random_state=1)
+        classifier = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(5, 2), max_iter=1000, random_state=1)
     else:
         raise ValueError('Choose one classification algorithm between Logistic Regression, Random Forest, Gradient Boosting')
     if model == 'Neural Network':
@@ -485,9 +485,11 @@ def main():
 
     current_dataset = [hospital_data_path, 'Hospital']
     # current_dataset = [german_data_path, 'German']
+    # current_dataset = [compas_data_path, 'COMPAS']
+    # current_dataset = [adult_data_path, 'Adult']
 
     df, sensitive_attributes, label, privileged, unprivileged, favorable_label, unfavorable_label, \
-        groups, model = preprocess_dataset(current_dataset[0], current_dataset[1], 'Neural Network')
+        groups, model = preprocess_dataset(current_dataset[0], current_dataset[1], 'Logistic Regression')
     # = '/content/raw_german_dataset.csv', 'German'
     # = preprocess_dataset('/content/raw_compas_dataset.csv', 'COMPAS')
     # = preprocess_dataset('/content/raw_adult_dataset.csv', 'Adult')
