@@ -119,7 +119,7 @@ def compute_neighbors_opt(group_lst,lst_of_counts, pos, neg):
 
 
 #Function to determine based on the neighbors if the group is positive or negative
-def determine_problematic_opt(group_lst, names, temp2, lst_of_counts, label_y, threshold= 0.3):
+def determine_problematic_opt(group_lst, names, temp2, lst_of_counts, label_y, threshold= 0.03):
     #0: ok group, 1: need negative records, 2: need positive records
     d = copy.copy(temp2)
     for i in range(len(group_lst)):
